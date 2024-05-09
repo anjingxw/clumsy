@@ -16,14 +16,14 @@
 //---------------------------------------------------------------------
 typedef struct {
 	int32_t initialized;
-	uint32_t oldest_index;
-	uint32_t oldest_ts;
-	int64_t accumulated_count;
-	int32_t sample_num;
-	int window_size;
-	float scale;
-	uint32_t *array_sum;
-	uint32_t *array_sample;
+	uint32_t oldest_index; //区间1s内发送数据的最开始索引
+	uint32_t oldest_ts;    //区间1秒区间的开始时间
+	int64_t accumulated_count; //区间1S内发送数据的总字节数
+	int32_t sample_num;  //区间1s的包数量
+	int window_size; //1s的的窗口大小，为1000
+	float scale;     //1s的的窗口大小，为1000, 这是除数
+	uint32_t *array_sum;  //oldest_index位置开始存储每个包的字节数
+	uint32_t *array_sample; //oldest_index位置开始存储
 } CRateStats;
 
 
@@ -277,6 +277,7 @@ void crate_stats_update(CRateStats *rate, int32_t count, uint32_t now_ts)
 //---------------------------------------------------------------------
 int32_t crate_stats_calculate(CRateStats *rate, uint32_t now_ts)
 {
+	// 距离上次的时间
 	int32_t active_size = (int32_t)(now_ts - rate->oldest_ts + 1);
 	float r;
 

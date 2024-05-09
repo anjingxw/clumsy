@@ -96,6 +96,7 @@ pub fn build(b: *std.build.Builder) void {
 
     exe.step.dependOn(&cmd.step);
     exe.addObjectFile(res_obj_path);
+    exe.addCSourceFile("src/bandwidthex.c", &.{""});
     exe.addCSourceFile("src/bandwidth.c", &.{""});
     exe.addCSourceFile("src/divert.c", &.{""});
     exe.addCSourceFile("src/drop.c", &.{""});
