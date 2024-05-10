@@ -24,3 +24,7 @@ Simulate network latency, delay, packet loss with clumsy on Windows 7/8/10:
 ## License
 
 MIT
+
+
+zig build -Dconf=Debug -Darch=x64 -Dsign=B
+udp and ip.SrcAddr == 122.9.165.10

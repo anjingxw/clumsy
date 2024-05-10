@@ -31,6 +31,11 @@ static volatile short bandwidthExEnabled = 0,
 
 static volatile LONG bandwidthExLimit = BANDWIDTHEX_DEFAULT; 
 
+static INLINE_FUNCTION short isBufEmpty() {
+    short ret = buf_head_->next == buf_tail_;
+    if (ret) assert(buf_size_ == 0);
+    return ret;
+}
 
 static Ihandle* bandwidthEXSetupUI() {
     Ihandle *bandwidthControlsBox = IupHbox(
@@ -71,12 +76,21 @@ static void bandwidthEXStartUp() {
         buf_tail_->prev = buf_head_;
         buf_size_ = 0;
     }
+    timing_left_size = 0.0;
+    startTimePeriod();
     LOG("bandwidthEx enabled");
 }
 
 static void bandwidthExCloseDown(PacketNode *head, PacketNode *tail) {
+    PacketNode *oldLast = tail->prev;
     UNREFERENCED_PARAMETER(head);
-    UNREFERENCED_PARAMETER(tail);
+    // flush all buffered packets
+    while(!isBufEmpty()) {
+        insertAfter(popNode(buf_tail_->prev), oldLast);
+        --buf_size_;
+    }
+    endTimePeriod();
+    timing_left_size = 0.0;
     LOG("bandwidthEx disabled");
 }
 
@@ -92,7 +106,6 @@ static short bandwidthExProcess(PacketNode *head, PacketNode* tail) {
 	int dropped = 0;
     while (head->next != tail) {
         PacketNode *pac = head->next;
-        // chance in range of [0, 10000]
         if (checkDirection(pac->addr.Outbound, bandwidthExInbound, bandwidthExOutbound)) {
 			if(buf_size_ > 2000){
 				dropped++;
@@ -100,7 +113,7 @@ static short bandwidthExProcess(PacketNode *head, PacketNode* tail) {
 				LOG("drop buf_size_ = %d", buf_size_);
 			}
 			else{
-				insertAfter(popNode(pac), buf_head_);
+				insertBefore(popNode(pac), buf_tail_);
 				++buf_size_;
 				LOG("send buf_size_ = %d", buf_size_);
 			}
@@ -120,21 +133,20 @@ static short bandwidthExProcess(PacketNode *head, PacketNode* tail) {
 	if(timing_left_size > limit){
 		timing_left_size = limit;
 	}
-	//LOG("%d, %f", diff, timing_left_size);
 
 	PacketNode * buf_head = buf_head_;
   	while (buf_head->next != buf_tail_) {
         PacketNode *pac = buf_head->next;
 		if(pac->packetLen <= timing_left_size){
 			timing_left_size -= pac->packetLen;
-			insertAfter(popNode(pac), head)->timestamp = now_ts;
+			insertBefore(popNode(pac), tail)->timestamp = now_ts;
 			--buf_size_;
 		}
 		else{
 			break;
 		}
     }	
-	return dropped > 0 || buf_size_ > 0;
+	return buf_size_ > 0;
 }
 
 
